@@ -2,9 +2,14 @@
 
 ![Status](https://img.shields.io/badge/status-in%20development-yellow.svg)
 ![License](https://img.shields.io/badge/license-All%20Rights%20Reserved-red.svg)
-![Frontend](https://img.shields.io/badge/frontend-svelte-orange.svg)
-![Backend](https://img.shields.io/badge/backend-fastapi-blue.svg)
+![Frontend](https://img.shields.io/badge/frontend-Svelte-orange.svg)
+![Backend](https://img.shields.io/badge/backend-FastAPI-blue.svg)
+![Python](https://img.shields.io/badge/python-3.10-blue.svg)
+![GeoPandas](https://img.shields.io/badge/GeoPandas-1.0.1-green.svg)
+![Rasterio](https://img.shields.io/badge/Rasterio-1.4.2-green.svg)
+![Shapely](https://img.shields.io/badge/Shapely-2.0.3-green.svg)
 ![Maintainer](https://img.shields.io/badge/maintainer-Mukesh%20Ray-blueviolet)
+
 
 QuickGIS is a modern, browser-based geospatial toolkit designed to perform common GIS tasks like buffering, clipping, and more — without needing desktop GIS software.
 
