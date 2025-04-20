@@ -1,0 +1,8 @@
+{
+"type": "FeatureCollection",
+"name": "097fdaaed22446aebf22e3aef7165c10_buffered",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "id": "FNFCDRPQ9mKTG8clxNCHyik418RqdqpC" }, "geometry": { "type": "Polygon", "coordinates": [ [ [ 77.521945180423856, 24.148271362137628 ], [ 77.97511043806918, 24.303242894494126 ], [ 78.361259190128422, 24.166645657815003 ], [ 78.447568908592899, 23.599035776003376 ], [ 77.488781783817544, 23.687476373597466 ], [ 77.521945180423856, 24.148271362137628 ] ] ] } }
+]
+}
