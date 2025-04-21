@@ -19,28 +19,52 @@
   mapboxgl.accessToken = 'pk.eyJ1IjoibXVrZXNocmF5IiwiYSI6ImNtOW03cnBvMDBkc2oycnE5ZDZ2OXM2bTYifQ.gozAGZElcAVol_6beAoVDw';
 
   onMount(() => {
-    map = new mapboxgl.Map({
-      container: mapContainer,
-      style: 'mapbox://styles/mapbox/streets-v11',
-      center: [78, 20],
-      zoom: 5
-    });
-
-    draw = new MapboxDraw({
-      displayControlsDefault: false,
-      controls: {
-        point: true,
-        line_string: true,
-        polygon: true,
-        trash: true,
-      }
-    });
-
-    map.addControl(draw);
-    map.on('draw.create', updateDrawn);
-    map.on('draw.update', updateDrawn);
-    map.on('draw.delete', () => drawnGeoJSON = null);
+  map = new mapboxgl.Map({
+    container: mapContainer,
+    style: 'mapbox://styles/mapbox/streets-v11',
+    center: [78, 20], // Default center if geolocation fails
+    zoom: 5
   });
+
+  // Add Draw control
+  draw = new MapboxDraw({
+    displayControlsDefault: false,
+    controls: {
+      point: true,
+      line_string: true,
+      polygon: true,
+      trash: true,
+    }
+  });
+
+  map.addControl(draw);
+  map.on('draw.create', updateDrawn);
+  map.on('draw.update', updateDrawn);
+  map.on('draw.delete', () => drawnGeoJSON = null);
+
+  // Request geolocation and zoom to current location
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        map.flyTo({ center: [longitude, latitude], zoom: 12 });
+
+        // Add a marker to current location
+        new mapboxgl.Marker({ color: '#22c55e' })
+          .setLngLat([longitude, latitude])
+          .setPopup(new mapboxgl.Popup().setText("📍 You are here!"))
+          .addTo(map);
+      },
+      (error) => {
+        console.warn("Geolocation error:", error.message);
+        alert("📌 Location access denied or unavailable.");
+      }
+    );
+  } else {
+    alert("Geolocation is not supported by your browser.");
+  }
+});
+
 
   function updateDrawn() {
     const data = draw.getAll();
@@ -49,40 +73,70 @@
     }
   }
 
-  async function handleFileUpload(event) {
-    uploadedFile = event.target.files[0];
+  function getLocation() {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        const lngLat = [coords.longitude, coords.latitude];
+        map.flyTo({ center: lngLat, zoom: 12 });
 
-    if (uploadedFile.name.endsWith('.geojson')) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        try {
-          uploadedGeoJSON = JSON.parse(reader.result);
-          addGeoJSONToMap(uploadedGeoJSON, 'input-layer', '#3b82f6');
-        } catch (err) {
-          alert('Invalid GeoJSON file.');
-        }
-      };
-      reader.readAsText(uploadedFile);
-    } else if (uploadedFile.name.endsWith('.zip')) {
-      const formData = new FormData();
-      formData.append("file", uploadedFile);
-
-      const response = await fetch('http://localhost:8000/preview/', {
-        method: 'POST',
-        body: formData
-      });
-
-      if (!response.ok) {
-        const err = await response.json();
-        alert("Preview failed: " + err.error);
-        return;
+        new mapboxgl.Marker({ color: '#22c55e' })
+          .setLngLat(lngLat)
+          .setPopup(new mapboxgl.Popup().setText("📍 You are here!"))
+          .addTo(map);
+      },
+      (err) => {
+        alert("⚠️ Location access denied or unavailable.");
+        console.error("Geolocation error:", err);
       }
-
-      const geojson = await response.json();
-      uploadedGeoJSON = JSON.parse(geojson);
-      addGeoJSONToMap(uploadedGeoJSON, 'input-layer', '#3b82f6');
-    }
+    );
+  } else {
+    alert("❌ Geolocation not supported by your browser.");
   }
+}
+
+  async function handleFileUpload(event) {
+  uploadedFile = event.target.files[0];
+
+  if (!uploadedFile) return;
+
+  const ext = uploadedFile.name.split('.').pop().toLowerCase();
+
+  if (ext === 'geojson' || ext === 'json') {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        uploadedGeoJSON = JSON.parse(reader.result);
+        addGeoJSONToMap(uploadedGeoJSON, 'input-layer', '#3b82f6');
+      } catch (err) {
+        alert('Invalid GeoJSON file.');
+      }
+    };
+    reader.readAsText(uploadedFile);
+  } else if (ext === 'zip' || ext === 'kml') {
+    // 🔁 Send ZIP (shapefile) or KML to backend for GeoJSON conversion
+    const formData = new FormData();
+    formData.append("file", uploadedFile);
+
+    const response = await fetch('http://localhost:8000/preview/', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      alert("Preview failed: " + err.error);
+      return;
+    }
+
+    const geojson = await response.json();
+    uploadedGeoJSON = JSON.parse(geojson);
+    addGeoJSONToMap(uploadedGeoJSON, 'input-layer', '#3b82f6');
+  } else {
+    alert("Unsupported file type.");
+  }
+}
+
 
   async function generateBuffer() {
     if (!distance) {
@@ -190,7 +244,7 @@
       </div>
 
       {#if drawMode === 'upload'}
-        <input type="file" accept=".geojson,.zip" on:change="{handleFileUpload}" />
+        <input type="file" accept=".geojson,.zip, .kml" on:change="{handleFileUpload}" />
       {/if}
 
       <input type="number" placeholder="Buffer distance in meters" bind:value="{distance}" />
@@ -204,6 +258,7 @@
       </select>
 
       <button on:click="{generateBuffer}">Generate Buffer</button>
+      
 
       {#if isBuffering}
         <p class="info-text">⏳ Buffering in progress...</p>
@@ -213,6 +268,8 @@
         </a>
       {/if}
     </div>
+
+    <button class="location-button" on:click={getLocation}>📍 Zoom to My Location</button>
 
     <div class="instructions">
       <p><strong>What is a Buffer?</strong><br />A buffer creates zones around map features to analyze proximity or impact areas.</p>
@@ -261,6 +318,7 @@
 
   .form-section {
     flex-grow: 1;
+
   }
 
   .map-panel {
@@ -343,6 +401,23 @@
     background-color: #0284c7;
   }
 
+  .location-button {
+  margin-top: 1rem;
+  background: #10b981;
+  color: white;
+  font-weight: bold;
+  padding: 0.75rem 1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+  width: 100%;
+}
+
+  .location-button:hover {
+    background: #059669;
+  }
+
   .info-text,
   .instructions {
     font-size: 0.9rem;
@@ -369,19 +444,25 @@
   }
 
   @media (max-width: 900px) {
-    .container {
-      flex-direction: column;
-      padding: 1rem;
-    }
-
-    .map-panel {
-      height: 400px;
-      position: relative;
-    }
-
-    #map {
-      position: relative;
-      height: 100%;
-    }
+  .container {
+    flex-direction: column;
+    padding: 1rem;
   }
+
+  .map-panel {
+    position: relative;
+    min-height: 400px; /* 🔄 Ensure map is tall enough */
+    height: 400px;      /* 💡 Fix height explicitly */
+  }
+
+  #map {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    left: 0;
+    height: 100%;
+  }
+}
+
 </style>

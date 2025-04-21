@@ -3,6 +3,8 @@
   import Home from './Home.svelte';
   import BufferTool from './BufferTool.svelte';
   import ClipTool from './ClipTool.svelte';
+  import VisualiseConvertTool from './VisualiseConvertTool.svelte';
+  import { component_subscribe } from 'svelte/internal';
 </script>
 
 <Router>
@@ -19,6 +21,7 @@
     <Route path="/" component={Home} />
     <Route path="/buffer" component={BufferTool} />
     <Route path="/clip" component={ClipTool} />
+    <Route path="/visualise" component={VisualiseConvertTool} ?></Route>
   </main>
 
   <footer class="footer">

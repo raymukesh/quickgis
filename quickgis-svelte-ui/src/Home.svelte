@@ -5,60 +5,17 @@
   }
 </script>
 
-<style>
-  .main-content {
-    max-width: 1000px;
-    margin: auto;
-    padding: 2rem;
-  }
-
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 2rem;
-  }
-
-  .tile {
-    background: #011530;
-    border-radius: 12px;
-    box-shadow: 0 12px 10px rgba(0, 0, 0, 0.06);
-    padding: 2rem;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    border: none;
-    font: inherit;
-    color: white;
-  }
-
-  .tile:hover {
-    transform: translateY(-5px);
-    background: #0299fe;
-  }
-
-  .tile-icon {
-    font-size: 2.5rem;
-    margin-bottom: 1rem;
-  }
-
-  .title {
-    margin-top: 0;
-    font-size: 2rem;
-    color: #1f2937;
-    text-align: center;
-  }
-
-  @media (max-width: 600px) {
-    .title {
-      font-size: 1.4rem;
-    }
-  }
-</style>
-
 <div class="main-content">
   <h1 class="title">Geoprocessing Tools</h1>
 
   <div class="grid">
+    <!-- 🆕 Visualise & Convert -->
+    <button class="tile" on:click={() => goTo("/visualise")} type="button">
+      <div class="tile-icon">🗂️</div>
+      <h2>Visualise & Convert</h2>
+      <p>Upload, view, and convert spatial data formats.</p>
+    </button>
+
     <button class="tile" on:click={() => goTo("/buffer")} type="button">
       <div class="tile-icon">📏</div>
       <h2>Buffer Tool</h2>
@@ -84,3 +41,66 @@
     </button>
   </div>
 </div>
+
+<style>
+  .main-content {
+    max-width: 1000px;
+    margin: auto;
+    padding: 2rem;
+  }
+
+  .title {
+    font-size: 1.75rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    color: #1f2937;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 2rem;
+  }
+
+  .tile {
+    background: #011530;
+    border-radius: 12px;
+    box-shadow: 0 12px 10px rgba(0, 0, 0, 0.06);
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: white;
+    border: none;
+    font: inherit;
+  }
+
+  .tile:hover {
+    transform: translateY(-5px);
+    background: #0299fe;
+  }
+
+  .tile-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+  }
+
+  h2 {
+    margin-top: 0;
+    font-size: 1.2rem;
+  }
+
+  p {
+    font-size: 0.95rem;
+  }
+
+  @media (max-width: 600px) {
+    .title {
+      font-size: 1.3rem;
+    }
+
+    .tile-icon {
+      font-size: 2rem;
+    }
+  }
+</style>
