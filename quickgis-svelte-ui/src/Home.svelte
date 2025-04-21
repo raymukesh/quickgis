@@ -1,106 +1,133 @@
 <script>
+  import { onMount } from "svelte";
   import { navigate } from "svelte-routing";
+  import mapboxgl from "mapbox-gl";
+
+  let map;
+  let mapContainer;
+
+  mapboxgl.accessToken = 'pk.eyJ1IjoibXVrZXNocmF5IiwiYSI6ImNtOW03cnBvMDBkc2oycnE5ZDZ2OXM2bTYifQ.gozAGZElcAVol_6beAoVDw';// Replace with your token
+
+  onMount(() => {
+    map = new mapboxgl.Map({
+      container: mapContainer,
+      style: "mapbox://styles/mapbox/streets-v11",
+      center: [78, 20],
+      zoom: 4
+    });
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          map.flyTo({ center: [longitude, latitude], zoom: 12 });
+
+          new mapboxgl.Marker({ color: "#22c55e" })
+            .setLngLat([longitude, latitude])
+            .setPopup(new mapboxgl.Popup().setText("📍 You are here!"))
+            .addTo(map);
+        },
+        (err) => console.warn("Geolocation error:", err)
+      );
+    }
+  });
+
   function goTo(path) {
     navigate(path);
   }
 </script>
 
-<div class="main-content">
-  <h1 class="title">Geoprocessing Tools</h1>
-
-  <div class="grid">
-    <!-- 🆕 Visualise & Convert -->
-    <button class="tile" on:click={() => goTo("/visualise")} type="button">
-      <div class="tile-icon">🗂️</div>
-      <h2>Visualise & Convert</h2>
-      <p>Upload, view, and convert spatial data formats.</p>
-    </button>
-
-    <button class="tile" on:click={() => goTo("/buffer")} type="button">
-      <div class="tile-icon">📏</div>
-      <h2>Buffer Tool</h2>
-      <p>Create buffer zones around features.</p>
-    </button>
-
-    <button class="tile" on:click={() => goTo("/clip")} type="button">
-      <div class="tile-icon">✂️</div>
-      <h2>Clip Tool</h2>
-      <p>Trim vector or raster layers using a mask.</p>
-    </button>
-
-    <button class="tile" type="button" disabled>
-      <div class="tile-icon">🔀</div>
-      <h2>Intersect Tool</h2>
-      <p>Find overlapping areas between datasets. (Coming soon)</p>
-    </button>
-
-    <button class="tile" type="button" disabled>
-      <div class="tile-icon">🧪</div>
-      <h2>Test Tool</h2>
-      <p>Testing future geospatial features. (Coming soon)</p>
-    </button>
-  </div>
-</div>
-
 <style>
-  .main-content {
-    max-width: 1000px;
-    margin: auto;
-    padding: 2rem;
-  }
-
-  .title {
-    font-size: 1.75rem;
-    margin-bottom: 1.5rem;
-    text-align: center;
-    color: #1f2937;
-  }
-
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  .container {
+    display: flex;
     gap: 2rem;
+    padding: 2rem;
+    max-width: 1400px;
+    margin: auto;
+    box-sizing: border-box;
+  }
+
+  .left-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
   }
 
   .tile {
     background: #011530;
-    border-radius: 12px;
-    box-shadow: 0 12px 10px rgba(0, 0, 0, 0.06);
-    padding: 2rem;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
+    border-radius: 10px;
     color: white;
-    border: none;
-    font: inherit;
+    padding: 1.2rem;
+    cursor: pointer;
+    text-align: center;
+    transition: 0.3s;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
   }
 
   .tile:hover {
-    transform: translateY(-5px);
-    background: #0299fe;
+    background: #0284c7;
   }
 
   .tile-icon {
-    font-size: 2.5rem;
-    margin-bottom: 1rem;
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
   }
 
-  h2 {
-    margin-top: 0;
-    font-size: 1.2rem;
+  .map-panel {
+    flex: 2;
+    min-height: 600px;
+    border: 2px solid #ccc;
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
   }
 
-  p {
-    font-size: 0.95rem;
+  #map {
+    position: absolute;
+    top: 0; bottom: 0; left: 0; right: 0;
   }
 
-  @media (max-width: 600px) {
-    .title {
-      font-size: 1.3rem;
+  @media (max-width: 900px) {
+    .container {
+      flex-direction: column;
+      padding: 1rem;
     }
 
-    .tile-icon {
-      font-size: 2rem;
+    .map-panel {
+      height: 400px;
     }
   }
 </style>
+
+<div class="container">
+  <div class="left-panel">
+    <div class="tile" on:click={() => goTo("/visualise")}>
+      <div class="tile-icon">🗺️</div>
+      <h3>Visualise & Convert</h3>
+      <p>View spatial data & convert formats</p>
+    </div>
+
+    <div class="tile" on:click={() => goTo("/buffer")}>
+      <div class="tile-icon">📏</div>
+      <h3>Buffer Tool</h3>
+      <p>Create buffer zones around features</p>
+    </div>
+
+    <div class="tile" on:click={() => goTo("/clip")}>
+      <div class="tile-icon">✂️</div>
+      <h3>Clip Tool</h3>
+      <p>Trim data using a mask layer</p>
+    </div>
+
+    <div class="tile" disabled>
+      <div class="tile-icon">🔀</div>
+      <h3>Intersect Tool</h3>
+      <p>(Coming soon)</p>
+    </div>
+  </div>
+
+  <div class="map-panel">
+    <div id="map" bind:this={mapContainer}></div>
+  </div>
+</div>

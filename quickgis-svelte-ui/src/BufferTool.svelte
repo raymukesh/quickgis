@@ -15,56 +15,33 @@
   let drawMode = 'upload';
   let draw;
   let drawnGeoJSON = null;
+  let locationMarker = null; // 🌍 Current location marker
 
   mapboxgl.accessToken = 'pk.eyJ1IjoibXVrZXNocmF5IiwiYSI6ImNtOW03cnBvMDBkc2oycnE5ZDZ2OXM2bTYifQ.gozAGZElcAVol_6beAoVDw';
 
   onMount(() => {
-  map = new mapboxgl.Map({
-    container: mapContainer,
-    style: 'mapbox://styles/mapbox/streets-v11',
-    center: [78, 20], // Default center if geolocation fails
-    zoom: 5
-  });
+    map = new mapboxgl.Map({
+      container: mapContainer,
+      style: 'mapbox://styles/mapbox/streets-v11',
+      center: [78, 20],
+      zoom: 5
+    });
 
-  // Add Draw control
-  draw = new MapboxDraw({
-    displayControlsDefault: false,
-    controls: {
-      point: true,
-      line_string: true,
-      polygon: true,
-      trash: true,
-    }
-  });
-
-  map.addControl(draw);
-  map.on('draw.create', updateDrawn);
-  map.on('draw.update', updateDrawn);
-  map.on('draw.delete', () => drawnGeoJSON = null);
-
-  // Request geolocation and zoom to current location
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        map.flyTo({ center: [longitude, latitude], zoom: 12 });
-
-        // Add a marker to current location
-        new mapboxgl.Marker({ color: '#22c55e' })
-          .setLngLat([longitude, latitude])
-          .setPopup(new mapboxgl.Popup().setText("📍 You are here!"))
-          .addTo(map);
-      },
-      (error) => {
-        console.warn("Geolocation error:", error.message);
-        alert("📌 Location access denied or unavailable.");
+    draw = new MapboxDraw({
+      displayControlsDefault: false,
+      controls: {
+        point: true,
+        line_string: true,
+        polygon: true,
+        trash: true,
       }
-    );
-  } else {
-    alert("Geolocation is not supported by your browser.");
-  }
-});
+    });
 
+    map.addControl(draw);
+    map.on('draw.create', updateDrawn);
+    map.on('draw.update', updateDrawn);
+    map.on('draw.delete', () => drawnGeoJSON = null);
+  });
 
   function updateDrawn() {
     const data = draw.getAll();
@@ -74,69 +51,68 @@
   }
 
   function getLocation() {
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        const lngLat = [coords.longitude, coords.latitude];
-        map.flyTo({ center: lngLat, zoom: 12 });
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        ({ coords }) => {
+          const lngLat = [coords.longitude, coords.latitude];
+          map.flyTo({ center: lngLat, zoom: 12 });
 
-        new mapboxgl.Marker({ color: '#22c55e' })
-          .setLngLat(lngLat)
-          .setPopup(new mapboxgl.Popup().setText("📍 You are here!"))
-          .addTo(map);
-      },
-      (err) => {
-        alert("⚠️ Location access denied or unavailable.");
-        console.error("Geolocation error:", err);
-      }
-    );
-  } else {
-    alert("❌ Geolocation not supported by your browser.");
+          if (locationMarker) locationMarker.remove(); // remove old marker
+
+          locationMarker = new mapboxgl.Marker({ color: '#22c55e' })
+            .setLngLat(lngLat)
+            .setPopup(new mapboxgl.Popup().setText("📍 You are here!"))
+            .addTo(map);
+        },
+        (err) => {
+          alert("⚠️ Location access denied or unavailable.");
+          console.error("Geolocation error:", err);
+        }
+      );
+    } else {
+      alert("❌ Geolocation not supported by your browser.");
+    }
   }
-}
 
   async function handleFileUpload(event) {
-  uploadedFile = event.target.files[0];
+    uploadedFile = event.target.files[0];
+    if (!uploadedFile) return;
 
-  if (!uploadedFile) return;
+    const ext = uploadedFile.name.split('.').pop().toLowerCase();
 
-  const ext = uploadedFile.name.split('.').pop().toLowerCase();
+    if (ext === 'geojson' || ext === 'json') {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          uploadedGeoJSON = JSON.parse(reader.result);
+          addGeoJSONToMap(uploadedGeoJSON, 'input-layer', '#3b82f6');
+        } catch (err) {
+          alert('Invalid GeoJSON file.');
+        }
+      };
+      reader.readAsText(uploadedFile);
+    } else if (ext === 'zip' || ext === 'kml') {
+      const formData = new FormData();
+      formData.append("file", uploadedFile);
 
-  if (ext === 'geojson' || ext === 'json') {
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        uploadedGeoJSON = JSON.parse(reader.result);
-        addGeoJSONToMap(uploadedGeoJSON, 'input-layer', '#3b82f6');
-      } catch (err) {
-        alert('Invalid GeoJSON file.');
+      const response = await fetch('http://localhost:8000/preview/', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        alert("Preview failed: " + err.error);
+        return;
       }
-    };
-    reader.readAsText(uploadedFile);
-  } else if (ext === 'zip' || ext === 'kml') {
-    // 🔁 Send ZIP (shapefile) or KML to backend for GeoJSON conversion
-    const formData = new FormData();
-    formData.append("file", uploadedFile);
 
-    const response = await fetch('http://localhost:8000/preview/', {
-      method: 'POST',
-      body: formData
-    });
-
-    if (!response.ok) {
-      const err = await response.json();
-      alert("Preview failed: " + err.error);
-      return;
+      const geojson = await response.json();
+      uploadedGeoJSON = JSON.parse(geojson);
+      addGeoJSONToMap(uploadedGeoJSON, 'input-layer', '#3b82f6');
+    } else {
+      alert("Unsupported file type.");
     }
-
-    const geojson = await response.json();
-    uploadedGeoJSON = JSON.parse(geojson);
-    addGeoJSONToMap(uploadedGeoJSON, 'input-layer', '#3b82f6');
-  } else {
-    alert("Unsupported file type.");
   }
-}
-
 
   async function generateBuffer() {
     if (!distance) {
@@ -192,34 +168,67 @@
     }
   }
 
-  function addGeoJSONToMap(data, id, color) {
-    if (map.getLayer(id)) map.removeLayer(id);
-    if (map.getSource(id)) map.removeSource(id);
+function addGeoJSONToMap(data, id, color) {
+  if (map.getLayer(id)) map.removeLayer(id);
+  if (map.getSource(id)) map.removeSource(id);
 
-    map.addSource(id, {
-      type: 'geojson',
-      data
-    });
+  // Remove previous markers except current location
+  document.querySelectorAll('.mapboxgl-marker.uploaded').forEach(m => m.remove());
 
-    map.addLayer({
-      id,
-      type: 'fill',
-      source: id,
-      paint: {
-        'fill-color': color,
-        'fill-opacity': 0.5
-      }
-    });
+  const bounds = new mapboxgl.LngLatBounds();
 
-    const bounds = new mapboxgl.LngLatBounds();
-    data.features.forEach(f => {
-      const coords = f.geometry.coordinates.flat(2);
-      for (let i = 0; i < coords.length; i += 2) {
-        bounds.extend([coords[i], coords[i + 1]]);
-      }
-    });
+  for (const feature of data.features) {
+    const geom = feature.geometry;
+    if (!geom) continue;
+
+    switch (geom.type) {
+      case 'Point':
+        const [lng, lat] = geom.coordinates;
+        const marker = new mapboxgl.Marker({ color })
+          .setLngLat([lng, lat])
+          .setPopup(new mapboxgl.Popup().setText("📍 Point"))
+          .addTo(map);
+        marker.getElement().classList.add('uploaded');
+        bounds.extend([lng, lat]);
+        break;
+
+      case 'MultiPoint':
+        geom.coordinates.forEach(coord => {
+          const [lng2, lat2] = coord;
+          const m = new mapboxgl.Marker({ color })
+            .setLngLat([lng2, lat2])
+            .setPopup(new mapboxgl.Popup().setText("📍 MultiPoint"))
+            .addTo(map);
+          m.getElement().classList.add('uploaded');
+          bounds.extend([lng2, lat2]);
+        });
+        break;
+
+      default:
+        // Add non-point geometries as layer
+        map.addSource(id, { type: 'geojson', data });
+        const type = ['LineString', 'MultiLineString'].includes(geom.type) ? 'line' : 'fill';
+
+        map.addLayer({
+          id,
+          type,
+          source: id,
+          paint: type === 'line'
+            ? { 'line-color': color, 'line-width': 2 }
+            : { 'fill-color': color, 'fill-opacity': 0.5 }
+        });
+
+        const flatCoords = geom.coordinates.flat(Infinity);
+        for (let i = 0; i < flatCoords.length; i += 2) {
+          bounds.extend([flatCoords[i], flatCoords[i + 1]]);
+        }
+    }
+  }
+
+  if (!bounds.isEmpty()) {
     map.fitBounds(bounds, { padding: 50 });
   }
+}
 
   function getDownloadFilename() {
     return exportFormat === 'shapefile'
@@ -231,6 +240,7 @@
       : 'buffered.geojson';
   }
 </script>
+
 
 
 <div class="container">

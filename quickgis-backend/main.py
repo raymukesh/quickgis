@@ -10,6 +10,8 @@ import uuid
 from fastapi.middleware.cors import CORSMiddleware
 import zipfile2 as zipfile
 import tempfile
+import threading
+import time
 
 app = FastAPI()
 
@@ -58,6 +60,8 @@ async def convert_file(
             gdf.set_crs(epsg=4326, inplace=True)
         else:
             gdf = gdf.to_crs(epsg=4326)
+
+        gdf = gdf[gdf.is_valid & ~gdf.is_empty]  # ✅ Filter invalid/empty geometries
 
         if output_format == "shapefile":
             out_dir = temp_dir / "out_shp"
@@ -310,3 +314,20 @@ async def clip_data(
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": f"Clip failed: {str(e)}"})
 
+# === Periodic Uploads Cleanup ===
+
+def cleanup_uploads(interval_seconds=3600, expiry_seconds=3600):
+    while True:
+        now = time.time()
+        for item in Path(UPLOAD_FOLDER).glob("**/*"):
+            try:
+                if item.is_file() and now - item.stat().st_mtime > expiry_seconds:
+                    item.unlink()
+                elif item.is_dir() and now - item.stat().st_mtime > expiry_seconds:
+                    shutil.rmtree(item)
+            except Exception as e:
+                print(f"[CLEANUP ERROR] {item}: {e}")
+        time.sleep(interval_seconds)
+
+# Start background thread (runs every hour, removes files older than 1 hour)
+threading.Thread(target=cleanup_uploads, daemon=True).start()
